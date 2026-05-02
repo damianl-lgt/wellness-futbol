@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f1b35">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Wellness">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Wellness Fútbol</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --navy: #0f1b35;
+    --navy2: #162340;
+    --card: #1a2d50;
+    --green: #4ade80;
+    --green2: #22c55e;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --border: #2d3f66;
+    --red: #f87171;
+    --yellow: #fbbf24;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--navy);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    overflow: hidden;
+  }
+
+  .screen {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 24px 20px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.35s ease;
+    overflow-y: auto;
+  }
+  .screen.active { opacity: 1; pointer-events: all; }
+
+  /* ── SPLASH ── */
+  #splash { background: var(--navy); gap: 16px; }
+  .splash-icon { font-size: 72px; animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+  .splash-title { font-size: 28px; font-weight: 700; color: var(--green); letter-spacing: -0.5px; }
+  .splash-sub { font-size: 15px; color: var(--muted); }
+
+  /* ── LOGIN ── */
+  #login { gap: 20px; }
+  .app-logo { font-size: 48px; margin-bottom: 4px; }
+  .app-title { font-size: 22px; font-weight: 700; color: var(--green); }
+  .app-sub { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 20px;
+    width: 100%; max-width: 360px;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+
+  label { font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; display: block; margin-bottom: 6px; }
+
+  select, input[type="number"] {
+    width: 100%;
+    background: var(--navy2);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 16px;
+    padding: 12px 14px;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    transition: border-color 0.2s;
+  }
+  select:focus, input[type="number"]:focus { border-color: var(--green); }
+  select option { background: var(--navy2); }
+
+  .pin-wrap { display: flex; gap: 10px; justify-content: center; }
+  .pin-digit {
+    width: 58px; height: 64px;
+    background: var(--navy2);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 24px; font-weight: 700;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.2s;
+    -moz-appearance: textfield;
+  }
+  .pin-digit::-webkit-outer-spin-button,
+  .pin-digit::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .pin-digit:focus { border-color: var(--green); }
+  .pin-digit.filled { border-color: var(--green2); }
+
+  .btn {
+    width: 100%; padding: 15px;
+    background: var(--green);
+    color: #0f1b35; font-size: 16px; font-weight: 700;
+    border: none; border-radius: 12px; cursor: pointer;
+    transition: transform 0.1s, opacity 0.2s;
+    letter-spacing: 0.3px;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn.secondary {
+    background: transparent;
+    border: 1.5px solid var(--border);
+    color: var(--muted); font-size: 14px;
+    padding: 11px;
+  }
+
+  .error-msg {
+    font-size: 13px; color: var(--red);
+    text-align: center; min-height: 18px;
+    padding: 6px 12px;
+    background: rgba(248,113,113,0.1);
+    border-radius: 8px; display: none;
+  }
+  .error-msg.visible { display: block; }
+
+  .spinner {
+    display: none; width: 22px; height: 22px;
+    border: 3px solid rgba(0,0,0,0.2);
+    border-top-color: #0f1b35;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading .spinner { display: block; }
+  .loading .btn-text { display: none; }
+
+  /* ── FORM ── */
+  #form { justify-content: flex-start; padding-top: 20px; padding-bottom: 30px; gap: 0; }
+
+  .form-header {
+    width: 100%; max-width: 400px;
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 0 18px 0;
+  }
+  .form-header-text h2 { font-size: 18px; font-weight: 700; }
+  .form-header-text p { font-size: 13px; color: var(--muted); }
+  .player-avatar {
+    width: 42px; height: 42px;
+    background: var(--green);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+
+  .form-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 18px;
+    width: 100%; max-width: 400px;
+    display: flex; flex-direction: column; gap: 20px;
+    margin-bottom: 16px;
+  }
+
+  .q-item { display: flex; flex-direction: column; gap: 8px; }
+  .q-header { display: flex; align-items: center; justify-content: space-between; }
+  .q-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .q-emoji { font-size: 22px; }
+  .q-value { font-size: 24px; font-weight: 800; color: var(--green); min-width: 28px; text-align: right; }
+
+  .slider-wrap { position: relative; }
+  input[type="range"] {
+    width: 100%; height: 6px;
+    -webkit-appearance: none; appearance: none;
+    background: var(--border);
+    border-radius: 3px; outline: none; cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 2px 8px rgba(74,222,128,0.4);
+    transition: transform 0.1s;
+  }
+  input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.2); }
+  input[type="range"]::-moz-range-thumb {
+    width: 26px; height: 26px; border: none;
+    border-radius: 50%; background: var(--green);
+  }
+
+  .slider-labels {
+    display: flex; justify-content: space-between;
+    font-size: 11px; color: var(--muted); margin-top: 4px; padding: 0 2px;
+  }
+
+  .q-obs label { font-size: 13px; font-weight: 600; color: var(--muted); }
+  textarea {
+    width: 100%; background: var(--navy2);
+    border: 1.5px solid var(--border);
+    border-radius: 10px; color: var(--text);
+    font-size: 15px; padding: 12px 14px;
+    resize: none; outline: none; min-height: 70px;
+    font-family: inherit; transition: border-color 0.2s;
+  }
+  textarea:focus { border-color: var(--green); }
+
+  .form-actions { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 10px; }
+
+  /* ── SUCCESS ── */
+  #success { gap: 20px; text-align: center; }
+  .success-icon { font-size: 72px; animation: bounce 0.6s ease; }
+  @keyframes bounce { 0%{transform:scale(0.5);opacity:0} 70%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
+  .success-name { font-size: 22px; font-weight: 700; }
+  .success-score-wrap {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px 32px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .score-label { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .score-value { font-size: 52px; font-weight: 800; color: var(--green); line-height: 1; }
+  .score-max { font-size: 18px; color: var(--muted); }
+  .success-msg { font-size: 15px; color: var(--muted); max-width: 280px; }
+  .success-bars {
+    display: flex; gap: 8px; width: 100%; max-width: 320px;
+    justify-content: center;
+  }
+  .bar-item { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+  .bar-bg { width: 100%; height: 60px; background: var(--card); border-radius: 6px; position: relative; overflow: hidden; }
+  .bar-fill { position: absolute; bottom: 0; width: 100%; border-radius: 6px; transition: height 1s ease; }
+  .bar-emoji { font-size: 14px; }
+  .bar-val { font-size: 11px; color: var(--muted); font-weight: 600; }
+
+  /* ── INSTALL BANNER ── */
+  #install-banner {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--card); border-top: 1px solid var(--border);
+    padding: 14px 20px; display: none;
+    align-items: center; justify-content: space-between; gap: 12px;
+    z-index: 100;
+  }
+  #install-banner.show { display: flex; }
+  .install-text { font-size: 13px; color: var(--text); line-height: 1.4; }
+  .install-text strong { color: var(--green); }
+  .install-btn { background: var(--green); color: #0f1b35; border: none; border-radius: 8px; padding: 10px 16px; font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap; }
+  .install-close { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; padding: 4px; }
+
+  /* ── PROGRESS BAR ── */
+  .progress-strip {
+    position: fixed; top: 0; left: 0;
+    height: 3px; background: var(--green);
+    transition: width 0.3s ease; z-index: 99;
+  }
+</style>
+</head>
+<body>
+
+<!-- Progress strip -->
+<div class="progress-strip" id="progress" style="width:0%"></div>
+
+<!-- ═══ SPLASH ═══ -->
+<div class="screen active" id="splash">
+  <div class="splash-icon">⚽</div>
+  <div class="splash-title">Wellness</div>
+  <div class="splash-sub">Pre-entrenamiento</div>
+</div>
+
+<!-- ═══ LOGIN ═══ -->
+<div class="screen" id="login">
+  <div class="app-logo">⚽</div>
+  <div class="app-title">Wellness</div>
+  <div class="app-sub">Ingresá para completar tu encuesta</div>
+
+  <div class="card">
+    <div>
+      <label for="sel-nombre">¿Quién sos?</label>
+      <select id="sel-nombre">
+        <option value="">— Seleccionar nombre —</option>
+      </select>
+    </div>
+    <div>
+      <label>Tu PIN (4 dígitos)</label>
+      <div class="pin-wrap" id="pin-wrap">
+        <input class="pin-digit" type="number" min="0" max="9" maxlength="1" inputmode="numeric" autocomplete="off">
+        <input class="pin-digit" type="number" min="0" max="9" maxlength="1" inputmode="numeric" autocomplete="off">
+        <input class="pin-digit" type="number" min="0" max="9" maxlength="1" inputmode="numeric" autocomplete="off">
+        <input class="pin-digit" type="number" min="0" max="9" maxlength="1" inputmode="numeric" autocomplete="off">
+      </div>
+    </div>
+    <div class="error-msg" id="login-error">PIN incorrecto. Revisá con el entrenador.</div>
+    <button class="btn" id="btn-login" disabled>
+      <span class="btn-text">Entrar →</span>
+      <div class="spinner"></div>
+    </button>
+  </div>
+</div>
+
+<!-- ═══ FORMULARIO ═══ -->
+<div class="screen" id="form">
+  <div class="form-header">
+    <div class="player-avatar" id="avatar">⚽</div>
+    <div class="form-header-text">
+      <h2 id="form-nombre">Cargando...</h2>
+      <p id="form-fecha"></p>
+    </div>
+  </div>
+
+  <div class="form-card" id="form-card">
+    <!-- generado por JS -->
+  </div>
+
+  <div class="form-actions">
+    <button class="btn" id="btn-submit">
+      <span class="btn-text">Enviar encuesta ✓</span>
+      <div class="spinner"></div>
+    </button>
+    <button class="btn secondary" id="btn-logout">Cambiar jugador</button>
+  </div>
+</div>
+
+<!-- ═══ ÉXITO ═══ -->
+<div class="screen" id="success">
+  <div class="success-icon">🎉</div>
+  <div class="success-name" id="success-name">¡Gracias!</div>
+  <div class="success-score-wrap">
+    <div class="score-label">Tu bienestar hoy</div>
+    <div><span class="score-value" id="success-score">—</span><span class="score-max"> /10</span></div>
+  </div>
+  <div class="success-bars" id="success-bars"></div>
+  <div class="success-msg" id="success-msg">Que tengas un excelente entrenamiento 💪</div>
+  <button class="btn secondary" id="btn-new-session" style="width:100%;max-width:300px;margin-top:8px;">Cambiar jugador</button>
+</div>
+
+<!-- ═══ INSTALL BANNER ═══ -->
+<div id="install-banner">
+  <div class="install-text"><strong>Instalá la app</strong><br>Agregá al inicio para recibir notificaciones</div>
+  <button class="install-btn" id="btn-install">Instalar</button>
+  <button class="install-close" id="btn-dismiss-install">×</button>
+</div>
+
+<script>
+// ─── CONFIGURACIÓN ─────────────────────────────────────────
+// ⚠️ Reemplazar con la URL de tu Apps Script Web App publicado
+const APPS_SCRIPT_URL = 'TU_APPS_SCRIPT_URL_AQUI';
+
+// ⚠️ Reemplazar con tu VAPID public key (de vapidkeys.com)
+const VAPID_PUBLIC_KEY = 'TU_VAPID_PUBLIC_KEY_AQUI';
+
+// ─── PREGUNTAS DEL FORMULARIO ───────────────────────────────
+const ESCALA_MAX = 10;
+
+const PREGUNTAS = [
+  { id: 'fatiga',  label: 'Fatiga Muscular',  labelBajo: 'Muy fatigado',  labelAlto: 'Sin fatiga',    emojis: ['😩','😩','😓','😓','😕','😐','🙂','🙂','😄','💪'] },
+  { id: 'sueno',   label: 'Calidad del Sueño', labelBajo: 'Dormí muy mal', labelAlto: 'Dormí genial',  emojis: ['😴','😴','🥱','🥱','😪','😑','😊','😊','😀','🌟'] },
+  { id: 'energia', label: 'Nivel de Energía',  labelBajo: 'Sin energía',   labelAlto: 'Lleno energía', emojis: ['🔋','🔋','😮‍💨','😮‍💨','😑','🙂','⚡','⚡','🔥','💥'] },
+  { id: 'animo',   label: 'Estado de Ánimo',   labelBajo: 'Muy bajo',      labelAlto: 'Excelente',     emojis: ['😢','😢','😞','😞','😕','😐','😊','😊','😁','🥳'] },
+  { id: 'estres',  label: 'Nivel de Estrés',   labelBajo: 'Muy estresado', labelAlto: 'Sin estrés',    emojis: ['🤯','🤯','😤','😤','😣','😐','😌','😌','😎','✨'] },
+  { id: 'dolor',   label: 'Dolor Muscular',    labelBajo: 'Mucho dolor',   labelAlto: 'Sin dolor',     emojis: ['🤕','🤕','😫','😫','😣','😐','🙂','🙂','😄','💯'] },
+];
+
+// ─── ESTADO ────────────────────────────────────────────────
+let state = {
+  jugador: null,  // { nombre, turno }
+  valores: {},
+};
+
+// ─── PANTALLAS ─────────────────────────────────────────────
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function setProgress(pct) {
+  document.getElementById('progress').style.width = pct + '%';
+}
+
+// ─── SPLASH ────────────────────────────────────────────────
+window.addEventListener('load', async () => {
+  registerSW();
+  await cargarJugadores();
+  setTimeout(() => { show('login'); setProgress(0); }, 1600);
+});
+
+// ─── SERVICE WORKER ────────────────────────────────────────
+async function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    window._swReg = reg;
+  } catch (e) { console.warn('SW error:', e); }
+}
+
+// ─── CARGAR JUGADORES ──────────────────────────────────────
+async function cargarJugadores() {
+  try {
+    const res = await apiFetch({ action: 'getPlayers' });
+    const sel = document.getElementById('sel-nombre');
+    (res.players || []).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.nombre;
+      opt.textContent = p.nombre;
+      sel.appendChild(opt);
+    });
+  } catch (e) {
+    // si falla, dejar el selector vacío — se podrá completar offline
+    console.warn('No se pudo cargar el plantel:', e);
+  }
+}
+
+// ─── LOGIN ─────────────────────────────────────────────────
+const pinInputs = document.querySelectorAll('.pin-digit');
+const btnLogin  = document.getElementById('btn-login');
+const selNombre = document.getElementById('sel-nombre');
+
+pinInputs.forEach((input, i) => {
+  input.addEventListener('input', (e) => {
+    // Solo 1 dígito por campo
+    const v = e.target.value.replace(/\D/g, '');
+    e.target.value = v ? v[0] : '';
+    if (v && i < 3) pinInputs[i + 1].focus();
+    e.target.classList.toggle('filled', !!e.target.value);
+    checkLoginReady();
+  });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Backspace' && !input.value && i > 0) {
+      pinInputs[i - 1].focus();
+      pinInputs[i - 1].value = '';
+      pinInputs[i - 1].classList.remove('filled');
+    }
+  });
+});
+
+selNombre.addEventListener('change', checkLoginReady);
+
+function getPin() {
+  return Array.from(pinInputs).map(i => i.value).join('');
+}
+
+function checkLoginReady() {
+  const ready = selNombre.value && getPin().length === 4;
+  btnLogin.disabled = !ready;
+}
+
+btnLogin.addEventListener('click', async () => {
+  const nombre = selNombre.value;
+  const pin    = getPin();
+  const errEl  = document.getElementById('login-error');
+
+  btnLogin.classList.add('loading');
+  btnLogin.disabled = true;
+  errEl.classList.remove('visible');
+  setProgress(30);
+
+  try {
+    const res = await apiFetch({ action: 'verificarJugador', nombre, pin });
+
+    if (!res.ok) {
+      errEl.classList.add('visible');
+      btnLogin.classList.remove('loading');
+      btnLogin.disabled = false;
+      setProgress(0);
+      return;
+    }
+
+    state.jugador = { nombre, turno: res.turno };
+    setProgress(60);
+
+    // Solicitar permiso de notificaciones y suscribir
+    suscribirNotificaciones(nombre);
+
+    if (res.yaRespondio) {
+      mostrarConfirmacion(null, true);
+    } else {
+      mostrarFormulario();
+    }
+
+  } catch (e) {
+    errEl.textContent = 'Error de conexión. Intentá de nuevo.';
+    errEl.classList.add('visible');
+    btnLogin.classList.remove('loading');
+    btnLogin.disabled = false;
+    setProgress(0);
+  }
+});
+
+// ─── FORMULARIO ────────────────────────────────────────────
+function mostrarFormulario() {
+  const card = document.getElementById('form-card');
+  card.innerHTML = '';
+  state.valores = {};
+
+  PREGUNTAS.forEach(p => {
+    const initVal = 5;
+    state.valores[p.id] = initVal;
+
+    const item = document.createElement('div');
+    item.className = 'q-item';
+    item.innerHTML = `
+      <div class="q-header">
+        <span class="q-title">${p.label}</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="q-emoji" id="emoji-${p.id}">${p.emojis[initVal - 1]}</span>
+          <span class="q-value" id="val-${p.id}">${initVal}</span>
+        </div>
+      </div>
+      <div class="slider-wrap">
+        <input type="range" min="1" max="10" value="${initVal}" id="slider-${p.id}">
+      </div>
+      <div class="slider-labels"><span>${p.labelBajo}</span><span>${p.labelAlto}</span></div>
+    `;
+    card.appendChild(item);
+
+    const slider = item.querySelector('input[type="range"]');
+    slider.addEventListener('input', () => {
+      const v = parseInt(slider.value);
+      state.valores[p.id] = v;
+      document.getElementById('val-' + p.id).textContent = v;
+      document.getElementById('emoji-' + p.id).textContent = p.emojis[v - 1];
+      colorSlider(slider, v);
+    });
+    colorSlider(slider, initVal);
+  });
+
+  // Observaciones
+  const obs = document.createElement('div');
+  obs.className = 'q-obs';
+  obs.innerHTML = `
+    <label>¿Alguna molestia o comentario? <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
+    <textarea id="obs-input" placeholder="Ej: dolor en rodilla derecha, no dormí bien..."></textarea>
+  `;
+  card.appendChild(obs);
+
+  // Header
+  const nombre = state.jugador.nombre;
+  document.getElementById('form-nombre').textContent = nombre;
+  document.getElementById('form-fecha').textContent = formatFecha(new Date());
+  document.getElementById('avatar').textContent = nombre[0].toUpperCase();
+
+  show('form');
+  setProgress(70);
+}
+
+function colorSlider(slider, v) {
+  const pct = ((v - 1) / (ESCALA_MAX - 1)) * 100;
+  const color = v <= 3 ? '#f87171' : v <= 6 ? '#fbbf24' : '#4ade80';
+  slider.style.background = `linear-gradient(to right, ${color} ${pct}%, var(--border) ${pct}%)`;
+}
+
+// Enviar formulario
+document.getElementById('btn-submit').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-submit');
+  btn.classList.add('loading'); btn.disabled = true;
+  setProgress(80);
+
+  const obs = document.getElementById('obs-input')?.value || '';
+  const payload = {
+    action:      'guardarRespuesta',
+    nombre:      state.jugador.nombre,
+    turno:       state.jugador.turno,
+    fecha:       new Date().toISOString().split('T')[0],
+    hora:        new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+    fatiga:      state.valores.fatiga,
+    sueno:       state.valores.sueno,
+    energia:     state.valores.energia,
+    animo:       state.valores.animo,
+    estres:      state.valores.estres,
+    dolor:       state.valores.dolor,
+    observaciones: obs,
+  };
+
+  try {
+    await apiFetch(payload);
+    setProgress(100);
+    mostrarConfirmacion(state.valores, false);
+  } catch (e) {
+    // Guardar offline y reenviar luego
+    guardarOffline(payload);
+    setProgress(100);
+    mostrarConfirmacion(state.valores, false, true);
+  }
+});
+
+document.getElementById('btn-logout').addEventListener('click', resetLogin);
+document.getElementById('btn-new-session').addEventListener('click', resetLogin);
+
+function resetLogin() {
+  state.jugador = null;
+  selNombre.value = '';
+  pinInputs.forEach(i => { i.value = ''; i.classList.remove('filled'); });
+  checkLoginReady();
+  document.getElementById('login-error').classList.remove('visible');
+  btnLogin.classList.remove('loading');
+  show('login');
+  setProgress(0);
+}
+
+// ─── PANTALLA DE ÉXITO ─────────────────────────────────────
+function mostrarConfirmacion(valores, yaRespondio, offline = false) {
+  const nombre = state.jugador?.nombre || '';
+  document.getElementById('success-name').textContent =
+    yaRespondio ? `¡Hola, ${nombre.split(' ')[0]}!` : `¡Gracias, ${nombre.split(' ')[0]}!`;
+
+  const msgs = [
+    '¡Que tengas un excelente entrenamiento! 💪',
+    '¡A dar todo hoy! 🔥',
+    '¡El trabajo de hoy es el éxito de mañana! ⚡',
+    '¡Foco y dedicación! 🎯',
+    '¡El equipo te necesita al 100%! 🏆',
+  ];
+  const msgEl = document.getElementById('success-msg');
+
+  if (yaRespondio) {
+    document.getElementById('success-icon')?.remove();
+    msgEl.textContent = 'Ya completaste tu encuesta de hoy. ¡Hasta mañana!';
+    document.getElementById('success-score').textContent = '—';
+    document.getElementById('success-bars').innerHTML = '';
+  } else if (valores) {
+    const promedio = Object.values(valores).reduce((a, b) => a + b, 0) / PREGUNTAS.length;
+    document.getElementById('success-score').textContent = promedio.toFixed(1);
+    msgEl.textContent = offline
+      ? '✓ Guardado. Se enviará cuando haya conexión. ' + msgs[Math.floor(Math.random() * msgs.length)]
+      : msgs[Math.floor(Math.random() * msgs.length)];
+    renderBars(valores);
+  }
+
+  show('success');
+  setProgress(100);
+}
+
+function renderBars(valores) {
+  const cont = document.getElementById('success-bars');
+  cont.innerHTML = '';
+  const emojiMap = { fatiga:'💪', sueno:'😴', energia:'⚡', animo:'😊', estres:'😌', dolor:'🦵' };
+  Object.entries(valores).forEach(([key, val]) => {
+    const pct = ((val - 1) / (ESCALA_MAX - 1)) * 100;
+    const color = val <= 3 ? '#f87171' : val <= 6 ? '#fbbf24' : '#4ade80';
+    const div = document.createElement('div');
+    div.className = 'bar-item';
+    div.innerHTML = `
+      <div class="bar-bg">
+        <div class="bar-fill" style="height:0%;background:${color}" data-pct="${pct}"></div>
+      </div>
+      <span class="bar-emoji">${emojiMap[key]}</span>
+      <span class="bar-val">${val}</span>
+    `;
+    cont.appendChild(div);
+    setTimeout(() => {
+      div.querySelector('.bar-fill').style.height = pct + '%';
+    }, 100);
+  });
+}
+
+// ─── NOTIFICACIONES PUSH ───────────────────────────────────
+async function suscribirNotificaciones(nombre) {
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
+  if (VAPID_PUBLIC_KEY === 'TU_VAPID_PUBLIC_KEY_AQUI') return; // no configurado aún
+
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return;
+
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+
+    // Guardar suscripción en el servidor
+    await apiFetch({
+      action:       'guardarSuscripcion',
+      nombre,
+      subscription: JSON.stringify(sub),
+    });
+
+  } catch (e) { console.warn('Push subscription error:', e); }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = window.atob(base64);
+  const output = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; ++i) output[i] = raw.charCodeAt(i);
+  return output;
+}
+
+// ─── OFFLINE QUEUE ─────────────────────────────────────────
+function guardarOffline(data) {
+  const queue = JSON.parse(localStorage.getItem('offline_queue') || '[]');
+  queue.push(data);
+  localStorage.setItem('offline_queue', JSON.stringify(queue));
+}
+
+async function enviarCola() {
+  const queue = JSON.parse(localStorage.getItem('offline_queue') || '[]');
+  if (!queue.length) return;
+  const pendientes = [];
+  for (const item of queue) {
+    try { await apiFetch(item); } catch { pendientes.push(item); }
+  }
+  localStorage.setItem('offline_queue', JSON.stringify(pendientes));
+}
+
+window.addEventListener('online', enviarCola);
+
+// ─── API HELPER ────────────────────────────────────────────
+async function apiFetch(data) {
+  if (APPS_SCRIPT_URL === 'TU_APPS_SCRIPT_URL_AQUI') {
+    throw new Error('Apps Script URL no configurada');
+  }
+  const res = await fetch(APPS_SCRIPT_URL, {
+    method:  'POST',
+    mode:    'no-cors',  // Apps Script no envía CORS headers en POST
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(data),
+  });
+  // no-cors devuelve opaque response — asumimos éxito si no lanza
+  return { ok: true };
+}
+
+// Para GET (getPlayers, verificarJugador)
+async function apiFetch(data) {
+  if (APPS_SCRIPT_URL === 'TU_APPS_SCRIPT_URL_AQUI') {
+    // Modo demo: jugadores hardcodeados
+    if (data.action === 'getPlayers') return { players: [
+      { nombre: 'Carlos Rodriguez' }, { nombre: 'Marcos Lopez' },
+      { nombre: 'Diego Fernandez' }, { nombre: 'Lucas Perez' }, { nombre: 'Matias Garcia' }
+    ]};
+    if (data.action === 'verificarJugador') return { ok: true, turno: 'Mañana', yaRespondio: false };
+    return { ok: true };
+  }
+
+  const params = new URLSearchParams({ payload: JSON.stringify(data) });
+  const url = APPS_SCRIPT_URL + '?' + params.toString();
+
+  try {
+    const res = await fetch(url);
+    return await res.json();
+  } catch {
+    // Fallback POST para envío de datos
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(data),
+    });
+    return { ok: true };
+  }
+}
+
+// ─── INSTALL PROMPT ────────────────────────────────────────
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const banner = document.getElementById('install-banner');
+  if (!localStorage.getItem('install_dismissed')) banner.classList.add('show');
+});
+
+document.getElementById('btn-install').addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById('install-banner').classList.remove('show');
+});
+
+document.getElementById('btn-dismiss-install').addEventListener('click', () => {
+  document.getElementById('install-banner').classList.remove('show');
+  localStorage.setItem('install_dismissed', '1');
+});
+
+// ─── UTILIDADES ────────────────────────────────────────────
+function formatFecha(d) {
+  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return `${dias[d.getDay()]} ${d.getDate()} de ${meses[d.getMonth()]}`;
+}
+</script>
+</body>
+</html>
